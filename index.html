@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Arcade: Building Dino Run - Alphagen Learning</title>
+    
+    <!-- Google Fonts: Poppins & Fira Code -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome & Canvas Confetti CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    },
+                    colors: {
+                        alphagen: {
+                            purple: '#5E48C4',      // Primary Brand Purple
+                            purpleDark: '#4A3AAD',  // Dark Purple hover
+                            purpleMid: '#7B6ED4',   // Decorative fills & borders
+                            purplePale: '#EAE7FE',  // Light note & highlight boxes
+                            purpleGhost: '#F5F4FF', // Page & card ghost background
+                            yellow: '#FFD071',      // Spark Yellow accent
+                            yellowDark: '#E6B84A',  // Yellow text on light surfaces
+                            yellowPale: '#FFF3CC',  // Soft highlight background
+                            nearBlack: '#1A1A1A',   // Primary text
+                            darkGrey: '#404048',    // Secondary text
+                            midGrey: '#888896',     // Captions & labels
+                            lightGrey: '#F2F2F4',   // Neutral card background
+                            cyan: '#59E4FB',        // Tech accent light
+                            cyanDark: '#055F6E',    // Tech accent dark
+                            cyanPale: '#E0FAFE',    // Tech pale background
+                            coral: '#ED5661',       // Warning / bug accent
+                            coralDark: '#993040',   // Warning dark text
+                            coralPale: '#FFF0F1'    // Warning pale background
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f081d;
+            font-family: 'Poppins', sans-serif;
+            color: #1A1A1A;
+            overflow-x: hidden;
+            user-select: none;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 1280x720 Fixed Presentation Stage Frame */
+        .slide-stage {
+            width: 1280px;
+            height: 720px;
+            margin: 16px auto 0 auto;
+            position: relative;
+            overflow: hidden;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #EAE7FE;
+        }
+
+        .slide-panel {
+            width: 1280px;
+            height: 720px;
+            padding: 78px 44px 26px 44px;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            position: absolute;
+            top: 0;
+            left: 0;
+            box-sizing: border-box;
+            background: #ffffff;
+        }
+
+        .slide-panel.active {
+            display: flex;
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-interactive {
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background-color 0.2s ease;
+        }
+        .btn-interactive:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+        .btn-interactive:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        /* Bottom Fixed Nav Bar */
+        .nav-bar {
+            width: 1280px;
+            margin: 12px auto 16px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: #2A1C68;
+            color: #FFD071;
+            border: 2px solid #5E48C4;
+            padding: 12px 28px;
+            border-radius: 16px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover:not(:disabled) {
+            background: #5E48C4;
+            color: #ffffff;
+            transform: scale(1.04);
+        }
+        .nav-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .dot-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2A1C68;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dot-indicator.active {
+            background: #FFD071;
+            width: 24px;
+            border-radius: 10px;
+        }
+
+        .spark-wavy-underline {
+            position: relative;
+            display: inline-block;
+            color: #5E48C4;
+        }
+        .spark-wavy-underline::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -8px;
+            width: 100%;
+            height: 10px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 4' preserveAspectRatio='none'%3E%3Cpath d='M0 2 Q 5 0, 10 2 T 20 2' fill='none' stroke='%23FFD071' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-size: 18px 10px;
+        }
+
+        /* Checkbox & Quiz Components */
+        .checkbox-card {
+            background: #ffffff;
+            border: 2px solid #EAE7FE;
+            border-radius: 16px;
+            padding: 13px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .checkbox-card:hover {
+            border-color: #5E48C4;
+            background: #F5F4FF;
+        }
+        .checkbox-card.checked {
+            background: #f0fdf4;
+            border-color: #22c55e;
+        }
+        .checkbox-box {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #5E48C4;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .checkbox-card.checked .checkbox-box {
+            background: #22c55e;
+            border-color: #22c55e;
+        }
+
+        .quiz-option {
+            background: #ffffff;
+            border: 2px solid #EAE7FE;
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1A1A1A;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-align: left;
+        }
+        .quiz-option:hover {
+            border-color: #5E48C4;
+            background: #F5F4FF;
+        }
+        .quiz-option.selected-correct {
+            background: #f0fdf4 !important;
+            border-color: #22c55e !important;
+            color: #14532d !important;
+        }
+        .quiz-option.selected-wrong {
+            background: #FFF0F1 !important;
+            border-color: #ED5661 !important;
+            color: #993040 !important;
+        }
+
+        /* Tab Switcher Buttons */
+        .tab-btn {
+            padding: 10px 24px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid #EAE7FE;
+            background: #F5F4FF;
+            color: #5E48C4;
+        }
+        .tab-btn.active {
+            background: #5E48C4;
+            color: #ffffff;
+            border-color: #5E48C4;
+            box-shadow: 0 6px 14px rgba(94, 72, 196, 0.25);
+        }
+
+        /* Clickable Code Line / Token Highlighting */
+        .code-line-btn {
+            display: block;
+            padding: 4px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .code-line-btn:hover {
+            background: rgba(94, 72, 196, 0.3);
+            border-color: #7B6ED4;
+        }
+        .code-line-btn.active-code-part {
+            background: rgba(255, 208, 113, 0.22);
+            border-color: #FFD071;
+            box-shadow: 0 0 0 1px rgba(255, 208, 113, 0.4);
+        }
+
+        .syntax-token-btn {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .syntax-token-btn:hover {
+            background: rgba(89, 228, 251, 0.2);
+            border-color: #59E4FB;
+        }
+        .syntax-token-btn.active-token {
+            background: #FFD071 !important;
+            color: #1A1A1A !important;
+            border-color: #ffffff !important;
+            font-weight: 800;
+            box-shadow: 0 0 10px rgba(255, 208, 113, 0.5);
+        }
+
+        .param-row-highlight {
+            background-color: #FFF3CC !important;
+            border-color: #E6B84A !important;
+            box-shadow: 0 0 0 2px rgba(230, 184, 74, 0.3);
+        }
+
+        /* Resize Handle */
+        .resize-handle {
+            position: absolute;
+            right: -7px;
+            bottom: -7px;
+            width: 20px;
+            height: 20px;
+            background: #FFD071;
+            border: 2px solid #1A1A1A;
+            border-radius: 6px;
+            cursor: nwse-resize;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1A1A1A;
+            font-size: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slide-stage">
+
+        <!-- Persistent Top Header -->
+        <header class="w-full bg-white border-b border-alphagen-purplePale px-8 py-2.5 flex items-center justify-between z-50 relative">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-alphagen-purple flex items-center justify-center text-white text-lg shadow-md shadow-alphagen-purple/20">
+                    <i class="fa-solid fa-gamepad"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base text-alphagen-nearBlack tracking-tight">Python Game Development</h1>
+                    <p class="text-[11px] font-bold text-alphagen-purple">Python Arcade &bull; Dino Run Project</p>
+                </div>
+            </div>
+            
+            <!-- Header Dots Container -->
+            <div class="flex items-center gap-1.5" id="header-dots-container"></div>
+
+            <!-- Controls: Counter, Dropdown, Audio -->
+            <div class="flex items-center gap-2.5">
+                <span id="slide-counter-pill" class="text-xs font-bold text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1.5 rounded-full border border-alphagen-purplePale">
+                    Slide 1 / 13
+                </span>
+
+                <select id="slide-dropdown" onchange="goToSlide(parseInt(this.value))" class="text-xs font-bold text-alphagen-nearBlack bg-alphagen-lightGrey hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer focus:outline-none focus:border-alphagen-purple transition">
+                    <option value="1">1. Welcome Screen</option>
+                    <option value="2">2. Warm-Up Capstone Reflection</option>
+                    <option value="3">3. Recap of Previous Concepts</option>
+                    <option value="4">4. Meet Python Arcade & Agenda</option>
+                    <option value="5">5. Installing Python Arcade</option>
+                    <option value="6">6. Observe Dino Run Game</option>
+                    <option value="7">7. Creating Game Window Lab</option>
+                    <option value="8">8. Challenge: Create Dino Window</option>
+                    <option value="9">9. Drawing Text Lab</option>
+                    <option value="10">10. Challenge: Dino Run Text</option>
+                    <option value="11">11. Challenge: Upgrade with Variables</option>
+                    <option value="12">12. Knowledge Check Quiz</option>
+                    <option value="13">13. Complete Code & Summary</option>
+                </select>
+
+                <button onclick="toggleAudio()" id="audio-btn" class="w-8 h-8 rounded-xl bg-alphagen-purpleGhost hover:bg-alphagen-purplePale text-alphagen-purple border border-alphagen-purplePale flex items-center justify-center text-xs transition btn-interactive" title="Toggle Sound">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- ================= SLIDE 1: CLEAN HOME SCREEN ================= -->
+        <div id="slide-1" class="slide-panel active justify-center items-center text-center bg-white">
+            <div class="inline-flex items-center gap-2 bg-alphagen-purpleGhost border border-alphagen-purplePale text-alphagen-purple text-base font-extrabold px-6 py-3 rounded-full mb-10 shadow-xs tracking-wider">
+                <i class="fa-solid fa-rocket"></i> INTERACTIVE GAME CODING LESSON
+            </div>
+
+            <h1 class="text-6xl md:text-7xl font-extrabold text-alphagen-nearBlack mb-14 tracking-tight max-w-4xl leading-tight">
+                Welcome to <span class="spark-wavy-underline">Python Arcade</span>
+            </h1>
+
+            <button onclick="nextSlide(); playSound('pop');" class="bg-alphagen-yellow hover:bg-alphagen-yellowDark text-alphagen-nearBlack font-extrabold text-2xl px-12 py-5 rounded-2xl shadow-xl shadow-alphagen-yellow/30 btn-interactive flex items-center gap-4">
+                <span>Start Lesson</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- ================= SLIDE 2: WARM-UP REFLECTION ================= -->
+        <div id="slide-2" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1.5 rounded-md border border-alphagen-purplePale">Warm-Up Reflection</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-2 mb-1">Describe Your Capstone Project</h2>
+               
+            </div>
+
+            <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-6 rounded-3xl my-auto space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-alphagen-purple text-white flex items-center justify-center text-xl shadow-md">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-extrabold text-alphagen-nearBlack">Tell us about your Capstone Project using Pygame / Pygame Zero:</h3>
+                     
+                    </div>
+                </div>
+
+                <textarea id="capstone-reflection-input" rows="6" placeholder="Type your capstone project description here..." class="w-full p-4 rounded-2xl border-2 border-alphagen-purplePale focus:border-alphagen-purple outline-none text-sm font-medium text-alphagen-nearBlack resize-none bg-white shadow-inner"></textarea>
+
+                <div class="flex items-center justify-between">
+                    <span id="reflection-saved-msg" class="text-xs font-bold text-alphagen-purple">Share your game story before moving to the concept recap!</span>
+                    <button onclick="saveCapstoneReflection()" class="bg-alphagen-yellow hover:bg-alphagen-yellowDark text-alphagen-nearBlack font-extrabold text-xs px-5 py-2.5 rounded-xl btn-interactive shadow-xs">
+                        Save Reflection ✨
+                    </button>
+                </div>
+            </div>
+
+           
+        </div>
+
+        <!-- ================= SLIDE 3: RECAP OF PREVIOUS CONCEPTS (2 TABS, VARIED OPTIONS) ================= -->
+        <div id="slide-3" class="slide-panel bg-white justify-between">
+            <div class="flex items-end justify-between">
+                <div>
+                    <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Concept Check</span>
+                    <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Recap of Previous Concepts</h2>
+                    <p class="text-sm text-alphagen-darkGrey">Toggle between <strong>Pygame</strong> and <strong>Pygame Zero</strong> to test your memory:</p>
+                </div>
+
+                <!-- Two Toggle Tabs -->
+                <div class="flex items-center gap-3 bg-alphagen-purpleGhost p-1.5 rounded-2xl border border-alphagen-purplePale">
+                    <button id="tab-btn-pygame" onclick="switchWorkTab('pygame')" class="tab-btn active">
+                        <i class="fa-brands fa-python mr-1.5"></i> Pygame
+                    </button>
+                    <button id="tab-btn-pgzero" onclick="switchWorkTab('pgzero')" class="tab-btn">
+                        <i class="fa-solid fa-gamepad mr-1.5"></i> Pygame Zero
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: PYGAME (Answers varied across B, C, B) -->
+            <div id="tab-panel-pygame" class="grid grid-cols-3 gap-4 my-auto">
+                <!-- Pygame Q1 (Correct = B) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Pygame Q1</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-1 mb-3">
+                            How many functions do we typically use to organize a Pygame game?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 'pg-q1-fb', 'Pygame needs more than 1 function—we separate drawing, events, and the main loop!')" class="quiz-option text-xs w-full">
+                                <span>Only 1 single main function</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'pg-q1-fb', 'Correct! We organize games using multiple functions (main, draw, movement/events).')" class="quiz-option text-xs w-full">
+                                <span>Multiple functions (main, draw, events)</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'pg-q1-fb', 'Incorrect—Pygame relies heavily on functions!')" class="quiz-option text-xs w-full">
+                                <span>0 functions are needed</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pg-q1-fb" class="text-[11px] font-bold text-alphagen-purple mt-2 min-h-[28px]"></div>
+                </div>
+
+                <!-- Pygame Q2 (Correct = C) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Pygame Q2</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-1 mb-3">
+                            How many loops do we need for a standard Pygame game?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 'pg-q2-fb', 'Too many—2 nested loops handle frames and events cleanly.')" class="quiz-option text-xs w-full">
+                                <span>5 nested loops</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'pg-q2-fb', 'Remember: inside the while loop, we also need a for loop to check events!')" class="quiz-option text-xs w-full">
+                                <span>Only 1 while loop</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'pg-q2-fb', 'Yes! 2 loops: an outer while loop for frames, and an inner for loop for events!')" class="quiz-option text-xs w-full">
+                                <span>2 loops (while game loop + for event loop)</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pg-q2-fb" class="text-[11px] font-bold text-alphagen-purple mt-2 min-h-[28px]"></div>
+                </div>
+
+                <!-- Pygame Q3: About blit() function (Correct = B) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Pygame Q3</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-1 mb-3">
+                            What does the <code class="font-mono text-alphagen-purple">blit()</code> function do in Pygame?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 'pg-q3-fb', 'No—closing the window uses pygame.quit().')" class="quiz-option text-xs w-full">
+                                <span>Closes the game window and exits Python</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'pg-q3-fb', 'Spot on! screen.blit(image, (x, y)) draws an image/surface onto the game screen!')" class="quiz-option text-xs w-full">
+                                <span>Draws/copies an image surface onto the screen at (x, y)</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'pg-q3-fb', 'Not quite—playing sound uses pygame.mixer.')" class="quiz-option text-xs w-full">
+                                <span>Plays background music in a loop</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pg-q3-fb" class="text-[11px] font-bold text-alphagen-purple mt-2 min-h-[28px]"></div>
+                </div>
+            </div>
+
+            <!-- TAB 2: PYGAME ZERO (Answers varied across B, C, B; Q3 uses def update() + keyboard.w) -->
+            <div id="tab-panel-pgzero" class="hidden grid-cols-3 gap-4 my-auto">
+                <!-- PGZero Q1 (Correct = B) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Pygame Zero Q1</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-1 mb-3">
+                            In which function do you change values and write game logic?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 'pgz-q1-fb', 'draw() is only for rendering visuals on screen.')" class="quiz-option text-xs font-mono w-full">
+                                <span>def draw():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'pgz-q1-fb', 'Correct! def update(): runs 60 times a second for game logic and variable updates.')" class="quiz-option text-xs font-mono w-full">
+                                <span>def update():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'pgz-q1-fb', 'Try again—think of the built-in loop hook in Pygame Zero.')" class="quiz-option text-xs font-mono w-full">
+                                <span>def logic():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pgz-q1-fb" class="text-[11px] font-bold text-alphagen-purple mt-2 min-h-[28px]"></div>
+                </div>
+
+                <!-- PGZero Q2 (Correct = C) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Pygame Zero Q2</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-1 mb-3">
+                            In which function can you draw anything onto the screen?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 'pgz-q2-fb', 'Not quite—Pygame Zero uses def draw(): automatically.')" class="quiz-option text-xs font-mono w-full">
+                                <span>def paint():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'pgz-q2-fb', 'update() handles logic, not drawing.')" class="quiz-option text-xs font-mono w-full">
+                                <span>def update():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'pgz-q2-fb', 'Spot on! def draw(): is where screen.fill() and actor.draw() belong.')" class="quiz-option text-xs font-mono w-full">
+                                <span>def draw():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pgz-q2-fb" class="text-[11px] font-bold text-alphagen-purple mt-2 min-h-[28px]"></div>
+                </div>
+
+                <!-- PGZero Q3: def update(): + keyboard.w (Correct = B) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Pygame Zero Q3</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-1 mb-3">
+                            Which is the correct code to check when the W button is pressed inside the game loop?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 'pgz-q3-fb', 'Not inside draw()—keyboard checks belong in def update(): using keyboard.w!')" class="quiz-option text-[11px] font-mono w-full">
+                                <span>def draw(): if key == "w":</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'pgz-q3-fb', 'Yes! Inside def update(): we check if keyboard.w: to detect the W key press!')" class="quiz-option text-[11px] font-mono w-full">
+                                <span>def update(): if keyboard.w:</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'pgz-q3-fb', 'Check the function name—Pygame Zero checks keyboard.w inside def update():!')" class="quiz-option text-[11px] font-mono w-full">
+                                <span>def check(): if press(W):</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="pgz-q3-fb" class="text-[11px] font-bold text-alphagen-purple mt-2 min-h-[28px]"></div>
+                </div>
+            </div>
+
+            
+        </div>
+
+        <!-- ================= SLIDE 4: MEET PYTHON ARCADE & TODAY'S AGENDA ================= -->
+        <div id="slide-4" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">New Library &amp; Roadmap</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Meet Python Arcade &amp; Today's Agenda</h2>
+              
+            </div>
+
+            <div class="grid grid-cols-12 gap-5 my-auto">
+                <!-- Left 6 cols: What Arcade Does, OOP & How It's Different from Pygame -->
+                <div class="col-span-6 space-y-3 flex flex-col justify-between">
+                    <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl space-y-1.5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-alphagen-purple text-white flex items-center justify-center text-base shadow-sm">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <h3 class="text-base font-extrabold text-alphagen-nearBlack">What Does Python Arcade Do?</h3>
+                        </div>
+                        <p class="text-xs text-alphagen-darkGrey leading-relaxed font-medium">
+                            <strong>Python Arcade</strong> is a modern Python library for building 2D games with graphics, sprites, sounds, and smooth motion. Over here, we will also be using <strong>Object-Oriented Programming (OOP)</strong> concepts to structure our game cleanly.
+                        </p>
+                    </div>
+
+                    <div class="bg-alphagen-cyanPale border-2 border-alphagen-cyan p-4 rounded-2xl space-y-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-alphagen-cyanDark text-white flex items-center justify-center text-base shadow-sm">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <h4 class="text-base font-extrabold text-alphagen-nearBlack">How Is Arcade Different from Pygame?</h4>
+                        </div>
+                        <ul class="text-xs text-alphagen-darkGrey space-y-1.5 pl-1 font-medium">
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-circle-check text-alphagen-cyanDark mt-0.5"></i>
+                                <span><strong>Powered by OpenGL (Fast Graphics):</strong> Unlike Pygame which draws slowly on the CPU, Arcade uses your graphics card (OpenGL) so games run super smoothly!</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-circle-check text-alphagen-cyanDark mt-0.5"></i>
+                                <span><strong>Easy Sprite Animations:</strong> Creating multi-frame sprite animations (like a running dinosaur!) was tricky in Pygame, but Arcade has built-in support to animate sprites effortlessly.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Right 6 cols: Today's Agenda + Dino Game Goal -->
+                <div class="col-span-6 bg-alphagen-nearBlack text-white p-5 rounded-3xl flex flex-col justify-between border-2 border-slate-800 shadow-lg">
+                    <div>
+                        <div class="inline-flex items-center gap-2 bg-alphagen-yellow text-alphagen-nearBlack font-extrabold text-xs px-3 py-1 rounded-md mb-2.5">
+                            <i class="fa-solid fa-flag-checkered"></i> PROJECT GOAL: DINO RUN GAME
+                        </div>
+                        <h3 class="text-xl font-extrabold text-alphagen-yellow mb-1">We Will Build the Dino Game as We Progress! 🦖</h3>
+                        
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2.5 text-xs mt-3">
+                        <strong class="text-alphagen-cyan font-bold block uppercase tracking-wider">Today's Agenda:</strong>
+                        <div class="flex items-center gap-3 text-slate-200">
+                            <span class="w-6 h-6 rounded-full bg-alphagen-purple text-white flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                            <span><strong>Install Python Arcade</strong> on Windows or Mac</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-slate-200">
+                            <span class="w-6 h-6 rounded-full bg-alphagen-purple text-white flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                            <span><strong>Create the Game Window</strong> (width, height, title &amp; background color)</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-slate-200">
+                            <span class="w-6 h-6 rounded-full bg-alphagen-purple text-white flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                            <span><strong>Add Text &amp; Variables</strong> for Score, High Score, Level &amp; DINO RUN banner</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+           
+        </div>
+
+        <!-- ================= SLIDE 5: INSTALLING ARCADE (WINDOWS & MAC WINDOWS) ================= -->
+        <div id="slide-5" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Environment Setup</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Installing the Python Arcade Library</h2>
+               
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 my-auto">
+                <!-- Window 1: Windows Computer -->
+                <div class="bg-alphagen-nearBlack text-white rounded-3xl border-2 border-slate-700 overflow-hidden shadow-xl flex flex-col justify-between">
+                    <div class="bg-slate-800 px-5 py-3 flex items-center justify-between border-b border-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-brands fa-windows text-alphagen-cyan text-lg"></i>
+                            <span class="font-extrabold text-sm tracking-wide">Windows Computer (Command Prompt / PowerShell)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-slate-600"></span>
+                            <span class="w-3 h-3 rounded-full bg-slate-600"></span>
+                            <span class="w-3 h-3 rounded-full bg-alphagen-coral"></span>
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-3.5 text-xs">
+                        <div class="flex items-start gap-2.5">
+                            <span class="w-5 h-5 rounded-full bg-alphagen-cyan text-alphagen-nearBlack font-extrabold flex items-center justify-center shrink-0">1</span>
+                            <p class="text-slate-200">Press <kbd class="bg-slate-800 px-2 py-0.5 rounded border border-slate-600 font-mono">Win + R</kbd>, type <code class="text-alphagen-yellow font-mono">cmd</code>, and press <strong>Enter</strong>.</p>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <span class="w-5 h-5 rounded-full bg-alphagen-cyan text-alphagen-nearBlack font-extrabold flex items-center justify-center shrink-0">2</span>
+                            <div class="w-full">
+                                <p class="text-slate-200 mb-1.5">Run the pip install command:</p>
+                                <div class="bg-slate-950 border border-slate-700 p-2.5 rounded-xl font-mono text-emerald-400 flex items-center justify-between">
+                                    <span>pip install arcade</span>
+                                    <button onclick="copyCmd('pip install arcade', this)" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-alphagen-yellow px-2.5 py-1 rounded-lg font-sans font-bold btn-interactive">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <span class="w-5 h-5 rounded-full bg-alphagen-cyan text-alphagen-nearBlack font-extrabold flex items-center justify-center shrink-0">3</span>
+                            <div class="w-full">
+                                <p class="text-slate-200 mb-1.5">Verify installation in Python:</p>
+                                <div class="bg-slate-950 border border-slate-700 p-2 rounded-xl font-mono text-alphagen-cyan text-[11px]">
+                                    python -c "import arcade; print(arcade.__version__)"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Window 2: Mac Computer -->
+                <div class="bg-alphagen-nearBlack text-white rounded-3xl border-2 border-slate-700 overflow-hidden shadow-xl flex flex-col justify-between">
+                    <div class="bg-slate-800 px-5 py-3 flex items-center justify-between border-b border-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex items-center gap-1.5 mr-1">
+                                <span class="w-3 h-3 rounded-full bg-alphagen-coral"></span>
+                                <span class="w-3 h-3 rounded-full bg-alphagen-yellow"></span>
+                                <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                            </div>
+                            <i class="fa-brands fa-apple text-white text-lg"></i>
+                            <span class="font-extrabold text-sm tracking-wide">Mac Computer (macOS Terminal)</span>
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-3.5 text-xs">
+                        <div class="flex items-start gap-2.5">
+                            <span class="w-5 h-5 rounded-full bg-alphagen-yellow text-alphagen-nearBlack font-extrabold flex items-center justify-center shrink-0">1</span>
+                            <p class="text-slate-200">Press <kbd class="bg-slate-800 px-2 py-0.5 rounded border border-slate-600 font-mono">Cmd + Space</kbd>, type <code class="text-alphagen-yellow font-mono">Terminal</code>, and press <strong>Return</strong>.</p>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <span class="w-5 h-5 rounded-full bg-alphagen-yellow text-alphagen-nearBlack font-extrabold flex items-center justify-center shrink-0">2</span>
+                            <div class="w-full">
+                                <p class="text-slate-200 mb-1.5">Run the pip3 install command:</p>
+                                <div class="bg-slate-950 border border-slate-700 p-2.5 rounded-xl font-mono text-emerald-400 flex items-center justify-between">
+                                    <span>pip3 install arcade</span>
+                                    <button onclick="copyCmd('pip3 install arcade', this)" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-alphagen-yellow px-2.5 py-1 rounded-lg font-sans font-bold btn-interactive">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <span class="w-5 h-5 rounded-full bg-alphagen-yellow text-alphagen-nearBlack font-extrabold flex items-center justify-center shrink-0">3</span>
+                            <div class="w-full">
+                                <p class="text-slate-200 mb-1.5">Verify installation in Python 3:</p>
+                                <div class="bg-slate-950 border border-slate-700 p-2 rounded-xl font-mono text-alphagen-cyan text-[11px]">
+                                    python3 -c "import arcade; print(arcade.__version__)"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkbox-card py-2.5" id="chk-install-done" onclick="toggleTaskCheckbox('chk-install-done')">
+                <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                <div class="font-extrabold text-sm text-alphagen-nearBlack">
+                    Click here once Python Arcade is successfully installed on your computer!
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SLIDE 6: OBSERVE DINO GAME (EXTERNAL LINK + BLANK INPUTS) ================= -->
+        <div id="slide-6" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Game Observation</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Play &amp; Observe the Dino Run Game!</h2>
+              
+            </div>
+
+            <div class="grid grid-cols-12 gap-5 my-auto items-stretch">
+                <!-- Left 5 cols: Playable Game Link Card -->
+                <div class="col-span-5 bg-alphagen-nearBlack text-white rounded-3xl p-6 border-2 border-slate-800 flex flex-col justify-between items-center text-center shadow-lg">
+                    <div class="w-16 h-16 rounded-2xl bg-alphagen-purple text-alphagen-yellow text-3xl flex items-center justify-center shadow-md mt-2">
+                        <i class="fa-solid fa-up-right-from-square"></i>
+                    </div>
+
+                    <div class="space-y-2">
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-alphagen-cyan">Step 1: Play the Game</span>
+                        <h3 class="text-xl font-extrabold text-white">Launch Dino Run</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Open the playable Dino Run game in your browser, play a round, and pay close attention to the characters, movement, and score!
+                        </p>
+                    </div>
+
+                    <a href="https://chromedino.com/" target="_blank" rel="noopener noreferrer" onclick="playSound('pop')" class="w-full bg-alphagen-yellow hover:bg-alphagen-yellowDark text-alphagen-nearBlack font-extrabold text-sm py-3.5 px-5 rounded-2xl shadow-lg btn-interactive flex items-center justify-center gap-2.5">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Open Playable Dino Game</span>
+                        <i class="fa-solid fa-external-link-alt text-xs"></i>
+                    </a>
+                </div>
+
+                <!-- Right 7 cols: Observation Questions with Empty Text Boxes -->
+                <div class="col-span-7 space-y-3.5 flex flex-col justify-between">
+                    <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl">
+                        <label class="block text-xs font-extrabold text-alphagen-nearBlack mb-1.5">
+                            1. How many sprites did you observe in the game?
+                        </label>
+                        <input type="text" value="" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-alphagen-purplePale focus:border-alphagen-purple outline-none text-xs font-medium bg-white">
+                    </div>
+
+                    <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl">
+                        <label class="block text-xs font-extrabold text-alphagen-nearBlack mb-1.5">
+                            2. What was the movement of the dinosaur sprite?
+                        </label>
+                        <input type="text" value="" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-alphagen-purplePale focus:border-alphagen-purple outline-none text-xs font-medium bg-white">
+                    </div>
+
+                    <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl">
+                        <label class="block text-xs font-extrabold text-alphagen-nearBlack mb-1.5">
+                            3. How did the score increase during the game?
+                        </label>
+                        <input type="text" value="" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-alphagen-purplePale focus:border-alphagen-purple outline-none text-xs font-medium bg-white">
+                    </div>
+                </div>
+            </div>
+
+           
+        </div>
+
+        <!-- ================= SLIDE 7: CREATING GAME WINDOW (CLICKABLE CODE PARTS EXPLAINER) ================= -->
+        <div id="slide-7" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Interactive Window Lab</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Creating the Arcade Game Window</h2>
+             
+            </div>
+
+            <div class="grid grid-cols-12 gap-5 my-auto items-stretch">
+                <!-- Left 5 cols: Interactive Clickable Code + Sliders -->
+                <div class="col-span-5 bg-alphagen-nearBlack text-white p-4 rounded-3xl border-2 border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                           
+                        </div>
+
+                        <div class="bg-slate-950 border border-slate-800 p-2.5 rounded-2xl font-mono text-xs space-y-1">
+                            <div onclick="explainWindowCodePart('import', this)" class="code-line-btn active-code-part">
+                                <span class="text-pink-400">import</span> arcade
+                            </div>
+                            <div onclick="explainWindowCodePart('dimensions', this)" class="code-line-btn">
+                                <span class="text-alphagen-yellow font-bold">WIDTH = <span id="win-code-w">500</span></span><br>
+                                <span class="text-alphagen-yellow font-bold">HEIGHT = <span id="win-code-h">250</span></span>
+                            </div>
+                            <div onclick="explainWindowCodePart('window', this)" class="code-line-btn">
+                                window = arcade.Window(WIDTH, HEIGHT, <span class="text-emerald-400">"Dino Run"</span>)
+                            </div>
+                            <div onclick="explainWindowCodePart('bg', this)" class="code-line-btn">
+                                window.background_color = <span id="win-code-bg" class="text-alphagen-cyan">(240, 240, 240)</span>
+                            </div>
+                            <div onclick="explainWindowCodePart('run', this)" class="code-line-btn">
+                                arcade.run()
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sliders + Color Picker -->
+                    <div class="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-2 text-xs mt-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-300 font-bold">Width (300–750):</span>
+                            <input type="range" id="win-w-slider" min="300" max="750" value="500" oninput="syncWindowFromSliders()" class="w-32 accent-alphagen-yellow">
+                            <span id="win-w-label" class="font-mono text-alphagen-yellow font-bold">500</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-300 font-bold">Height (150–340):</span>
+                            <input type="range" id="win-h-slider" min="150" max="340" value="250" oninput="syncWindowFromSliders()" class="w-32 accent-alphagen-yellow">
+                            <span id="win-h-label" class="font-mono text-alphagen-yellow font-bold">250</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-300 font-bold">Background Color:</span>
+                            <select id="win-bg-select" onchange="syncWindowFromSliders()" class="bg-slate-800 text-white border border-slate-700 rounded-lg px-2 py-1 font-mono text-[11px]">
+                                <option value="(240, 240, 240)">(240, 240, 240) Light Gray</option>
+                                <option value="arcade.color.SKY_BLUE">arcade.color.SKY_BLUE</option>
+                                <option value="arcade.color.WHITE">arcade.color.WHITE</option>
+                                <option value="(255, 243, 204)">(255, 243, 204) Warm Cream</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 7 cols: Draggable Window Stage + Live Code Explanation Box -->
+                <div class="col-span-7 bg-slate-900 border-2 border-slate-800 rounded-3xl p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex items-center justify-between text-xs text-alphagen-cyan font-bold mb-1.5">
+                        <span><i class="fa-solid fa-up-right-and-down-left-from-center mr-1"></i> Drag the yellow corner handle to resize!</span>
+                        <span id="win-dim-pill" class="font-mono text-alphagen-yellow bg-slate-950 px-3 py-1 rounded-full">500 &times; 250 px</span>
+                    </div>
+
+                    <div id="drag-arena" class="w-full h-[255px] bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-center relative overflow-hidden">
+                        <!-- Draggable Simulated Window -->
+                        <div id="draggable-arcade-win" class="relative rounded-xl border-2 border-slate-400 shadow-2xl flex flex-col overflow-hidden transition-colors" style="width: 420px; height: 210px; background-color: rgb(240, 240, 240);">
+                            <!-- Window Title Bar -->
+                            <div class="bg-slate-800 text-white px-3 py-1.5 text-[11px] font-bold flex items-center justify-between shrink-0">
+                                <span><i class="fa-solid fa-gamepad text-alphagen-yellow mr-1.5"></i>Dino Run</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-alphagen-coral"></span>
+                                </div>
+                            </div>
+                            <!-- Window Body -->
+                            <div class="flex-grow flex flex-col items-center justify-center text-center p-2">
+                                <span class="font-mono font-bold text-xs text-slate-700 bg-white/80 px-3 py-1 rounded-lg border border-slate-300 shadow-xs" id="win-inner-label">
+                                    WIDTH = 500, HEIGHT = 250
+                                </span>
+                                <span class="text-[10px] font-semibold text-slate-500 mt-1">Drag bottom-right corner &searr;</span>
+                            </div>
+
+                            <!-- Draggable Corner Handle -->
+                            <div id="win-resize-handle" class="resize-handle" title="Drag to resize window">
+                                <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Explanation Box on Screen -->
+                    <div class="bg-slate-950 border-2 border-alphagen-yellow/70 p-3 rounded-2xl mt-2 flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-alphagen-yellow text-alphagen-nearBlack flex items-center justify-center text-sm shrink-0 font-extrabold">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </div>
+                        <div>
+                            <div id="win-explain-title" class="text-xs font-extrabold text-alphagen-yellow">import arcade</div>
+                            <p id="win-explain-desc" class="text-xs text-slate-200 mt-0.5 leading-snug">
+                                Loads the Python Arcade library into your program so you can create windows, draw shapes/text, and build your game.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+           
+        </div>
+
+        <!-- ================= SLIDE 8: CODING CHALLENGE - CREATE THE DINO GAME WINDOW ================= -->
+        <div id="slide-8" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Coding Lab 1</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Coding Challenge: Create the Dino Game Window</h2>
+               
+            </div>
+
+            <div class="grid grid-cols-12 gap-6 my-auto items-center">
+                <!-- Left 7 cols: Concise Pointers Only -->
+                <div class="col-span-7 space-y-3">
+                    <div class="checkbox-card" id="chk-w-1" onclick="toggleTaskCheckbox('chk-w-1')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-base text-alphagen-nearBlack">1. Import the library</h3>
+                    </div>
+
+                    <div class="checkbox-card" id="chk-w-2" onclick="toggleTaskCheckbox('chk-w-2')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-base text-alphagen-nearBlack">2. Set the window width and height (700 &times; 250)</h3>
+                    </div>
+
+                    <div class="checkbox-card" id="chk-w-3" onclick="toggleTaskCheckbox('chk-w-3')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-base text-alphagen-nearBlack">3. Create the window titled "Dino Run" and run Arcade</h3>
+                    </div>
+
+                    <div class="checkbox-card" id="chk-w-4" onclick="toggleTaskCheckbox('chk-w-4')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-base text-alphagen-nearBlack">4. Add the background color (240, 240, 240)</h3>
+                    </div>
+                </div>
+
+                <!-- Right 5 cols: Simple Visual Preview & Points (No Specs Box) -->
+                <div class="col-span-5 bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-5 rounded-3xl space-y-4">
+                    <div class="w-full h-36 rounded-2xl border-2 border-slate-400 overflow-hidden flex flex-col shadow-md" style="background-color: rgb(240, 240, 240);">
+                        <div class="bg-slate-800 text-white px-3 py-1.5 text-xs font-bold flex items-center justify-between">
+                            <span><i class="fa-solid fa-gamepad text-alphagen-yellow mr-1.5"></i>Dino Run</span>
+                            <div class="flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-alphagen-coral"></span>
+                            </div>
+                        </div>
+                        <div class="flex-grow flex items-center justify-center text-xs font-bold text-slate-500">
+                            Your Dino Run Game Window
+                        </div>
+                    </div>
+
+                   
+                </div>
+            </div>
+
+            
+        </div>
+
+        <!-- ================= SLIDE 9: DRAWING TEXT LAB (CLICKABLE SYNTAX TOKENS + EXPLANATION) ================= -->
+        <div id="slide-9" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Interactive Text Lab</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Drawing Text with <code class="font-mono text-alphagen-purple">arcade.draw_text()</code></h2>
+               
+            </div>
+
+            <div class="grid grid-cols-12 gap-5 my-auto items-stretch">
+                <!-- Left 5 cols: Parameter Controls -->
+                <div class="col-span-5 bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-3.5 rounded-3xl space-y-2 flex flex-col justify-between text-xs">
+                    <div id="param-row-text" onclick="highlightTextParam('text')" class="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-transparent cursor-pointer transition">
+                        <label class="font-extrabold text-alphagen-nearBlack w-24">1. text:</label>
+                        <input id="txt-val-input" type="text" value="DINO RUN" oninput="highlightTextParam('text'); updateTextLab();" class="flex-grow px-2.5 py-1 rounded-lg border border-alphagen-purplePale font-mono font-bold bg-white">
+                    </div>
+
+                    <div id="param-row-x" onclick="highlightTextParam('x')" class="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-transparent cursor-pointer transition">
+                        <label class="font-extrabold text-alphagen-nearBlack w-24">2. x (0–700):</label>
+                        <input id="txt-x-slider" type="range" min="20" max="660" value="350" oninput="highlightTextParam('x'); updateTextLab();" class="w-36 accent-alphagen-purple">
+                        <span id="txt-x-num" class="font-mono font-bold text-alphagen-purple w-8 text-right">350</span>
+                    </div>
+
+                    <div id="param-row-y" onclick="highlightTextParam('y')" class="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-transparent cursor-pointer transition">
+                        <label class="font-extrabold text-alphagen-nearBlack w-24">3. y (0–250):</label>
+                        <input id="txt-y-slider" type="range" min="15" max="225" value="150" oninput="highlightTextParam('y'); updateTextLab();" class="w-36 accent-alphagen-purple">
+                        <span id="txt-y-num" class="font-mono font-bold text-alphagen-purple w-8 text-right">150</span>
+                    </div>
+
+                    <div id="param-row-color" onclick="highlightTextParam('color')" class="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-transparent cursor-pointer transition">
+                        <label class="font-extrabold text-alphagen-nearBlack w-24">4. color:</label>
+                        <select id="txt-color-select" onchange="highlightTextParam('color'); updateTextLab();" class="flex-grow px-2 py-1 rounded-lg border border-alphagen-purplePale font-mono text-[11px] bg-white">
+                            <option value="arcade.color.GRAY|#808080">arcade.color.GRAY</option>
+                            <option value="arcade.color.DARK_SLATE_BLUE|#483D8B">arcade.color.DARK_SLATE_BLUE</option>
+                            <option value="arcade.color.CRIMSON|#DC143C">arcade.color.CRIMSON</option>
+                            <option value="arcade.color.DARK_GREEN|#006400">arcade.color.DARK_GREEN</option>
+                            <option value="arcade.color.BLACK|#000000">arcade.color.BLACK</option>
+                        </select>
+                    </div>
+
+                    <div id="param-row-size" onclick="highlightTextParam('size')" class="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-transparent cursor-pointer transition">
+                        <label class="font-extrabold text-alphagen-nearBlack w-24">5. font_size:</label>
+                        <input id="txt-size-slider" type="range" min="12" max="42" value="28" oninput="highlightTextParam('size'); updateTextLab();" class="w-36 accent-alphagen-purple">
+                        <span id="txt-size-num" class="font-mono font-bold text-alphagen-purple w-8 text-right">28</span>
+                    </div>
+
+                    <div id="param-row-anchor" onclick="highlightTextParam('anchor')" class="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-transparent cursor-pointer transition">
+                        <label class="font-extrabold text-alphagen-nearBlack w-24">6. anchor_x:</label>
+                        <select id="txt-anchor-select" onchange="highlightTextParam('anchor'); updateTextLab();" class="flex-grow px-2 py-1 rounded-lg border border-alphagen-purplePale font-mono text-[11px] bg-white">
+                            <option value="center">"center"</option>
+                            <option value="left">"left"</option>
+                            <option value="right">"right"</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Right 7 cols: Clickable Syntax + Stage + Explanation Below -->
+                <div class="col-span-7 bg-alphagen-nearBlack text-white p-4 rounded-3xl border-2 border-slate-800 flex flex-col justify-between">
+                    <!-- Syntax Box with Clear @window.event and Clickable Tokens -->
+                    <div class="bg-slate-950 border border-slate-800 p-3 rounded-2xl font-mono text-xs leading-relaxed">
+                        <div>
+                            <span id="tok-event" onclick="highlightTextParam('event')" class="syntax-token-btn text-alphagen-cyan font-bold">@window.event</span>
+                        </div>
+                        <div class="text-emerald-400 font-bold pl-1">def on_draw():</div>
+                        <div class="pl-6 text-slate-300">window.clear()</div>
+                        <div class="pl-6 text-white">
+                            arcade.draw_text(<span id="tok-text" onclick="highlightTextParam('text')" class="syntax-token-btn active-token text-alphagen-yellow">"<span id="code-txt-val">DINO RUN</span>"</span>, <span id="tok-x" onclick="highlightTextParam('x')" class="syntax-token-btn text-alphagen-cyan"><span id="code-txt-x">350</span></span>, <span id="tok-y" onclick="highlightTextParam('y')" class="syntax-token-btn text-alphagen-cyan"><span id="code-txt-y">150</span></span>, <span id="tok-color" onclick="highlightTextParam('color')" class="syntax-token-btn text-emerald-300"><span id="code-txt-col">arcade.color.GRAY</span></span>, <span id="tok-size" onclick="highlightTextParam('size')" class="syntax-token-btn text-pink-300"><span id="code-txt-size">28</span></span>, <span id="tok-anchor" onclick="highlightTextParam('anchor')" class="syntax-token-btn text-amber-300">anchor_x="<span id="code-txt-anchor">center</span>"</span>)
+                        </div>
+                    </div>
+
+                    <!-- Live 700x250 Scaled Preview -->
+                    <div class="my-2 flex flex-col items-center">
+                        <div id="text-lab-stage" class="relative rounded-xl border-2 border-slate-600 overflow-hidden" style="width: 630px; height: 155px; background-color: rgb(240, 240, 240);">
+                            <!-- Crosshair dot at exact (x,y) -->
+                            <div id="txt-anchor-dot" class="absolute w-2.5 h-2.5 rounded-full bg-alphagen-coral border border-white -ml-1 -mb-1 z-10" style="left: 315px; bottom: 93px;" title="Exact (x, y) coordinate"></div>
+                            
+                            <!-- Rendered Text -->
+                            <div id="txt-lab-preview" class="absolute font-sans font-bold whitespace-nowrap select-none" style="left: 315px; bottom: 93px; color: #808080; font-size: 25px; transform: translate(-50%, 35%);">
+                                DINO RUN
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Parameter Explanation Box Below -->
+                    <div class="bg-slate-950 border-2 border-alphagen-yellow/80 p-2.5 rounded-2xl flex items-start gap-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-alphagen-yellow text-alphagen-nearBlack flex items-center justify-center text-xs shrink-0 font-extrabold mt-0.5">
+                            <i class="fa-solid fa-lightbulb"></i>
+                        </div>
+                        <div>
+                            <div id="txt-param-title" class="text-xs font-extrabold text-alphagen-yellow">Parameter 1: text ("DINO RUN")</div>
+                            <p id="txt-param-desc" class="text-[11.5px] text-slate-200 leading-snug">
+                                The exact words or message you want to display on the game screen inside quotation marks.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+           
+        </div>
+
+        <!-- ================= SLIDE 10: CODING CHALLENGE - STATIC DINO RUN TEXT (POINTERS ONLY) ================= -->
+        <div id="slide-10" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Coding Lab 2</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Coding Challenge: Place the Dino Run Text on Screen</h2>
+              
+            </div>
+
+            <div class="grid grid-cols-12 gap-5 my-auto items-center">
+                <!-- Left 7 cols: Exact Visual Blueprint Box -->
+                <div class="col-span-7 bg-alphagen-nearBlack p-4 rounded-3xl border-2 border-slate-800 flex flex-col items-center">
+                    <div class="w-full flex justify-between text-xs font-bold text-alphagen-cyan mb-2 px-1">
+                        <span><i class="fa-solid fa-ruler-combined mr-1"></i> LAYOUT BLUEPRINT (700 &times; 250)</span>
+                      
+                    </div>
+
+                    <!-- Rectangular Game Box (700x250 proportional) -->
+                    <div class="relative rounded-xl border-2 border-slate-500 overflow-hidden shadow-inner" style="width: 630px; height: 225px; background-color: rgb(240, 240, 240);">
+                        <!-- Level: 1 at (20, 215) -->
+                        <div class="absolute font-sans font-bold text-gray-500 flex flex-col items-start" style="left: 18px; top: 14px; font-size: 13.5px;">
+                            <span>Level: 1</span>
+                            <span class="text-[10px] font-mono text-alphagen-purple bg-white/90 px-1.5 rounded border border-alphagen-purplePale mt-0.5">(20, 215) &bull; size 15</span>
+                        </div>
+
+                        <!-- High Score: 0 at (350, 215) -->
+                        <div class="absolute font-sans font-bold text-gray-500 flex flex-col items-start" style="left: 315px; top: 14px; font-size: 13.5px;">
+                            <span>High Score: 0</span>
+                            <span class="text-[10px] font-mono text-alphagen-purple bg-white/90 px-1.5 rounded border border-alphagen-purplePale mt-0.5">(350, 215) &bull; size 15</span>
+                        </div>
+
+                        <!-- Score: 0 at (550, 215) -->
+                        <div class="absolute font-sans font-bold text-gray-500 flex flex-col items-start" style="left: 495px; top: 14px; font-size: 13.5px;">
+                            <span>Score: 0</span>
+                            <span class="text-[10px] font-mono text-alphagen-purple bg-white/90 px-1.5 rounded border border-alphagen-purplePale mt-0.5">(550, 215) &bull; size 15</span>
+                        </div>
+
+                        <!-- DINO RUN at (350, 150) centered -->
+                        <div class="absolute font-sans font-extrabold text-gray-500 flex flex-col items-center -translate-x-1/2" style="left: 315px; top: 76px; font-size: 25px;">
+                            <span>DINO RUN</span>
+                            <span class="text-[10px] font-mono font-bold text-alphagen-purple bg-white/90 px-2 py-0.5 rounded border border-alphagen-purplePale mt-0.5">(350, 150) &bull; size 28 &bull; centered</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 5 cols: Pointers Only (No Syntax Given) -->
+                <div class="col-span-5 space-y-2.5">
+                    <div class="checkbox-card py-2.5" id="chk-txt-1" onclick="toggleTaskCheckbox('chk-txt-1')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-xs text-alphagen-nearBlack">1. Set up the draw event function and clear the window</h3>
+                    </div>
+
+                    <div class="checkbox-card py-2.5" id="chk-txt-2" onclick="toggleTaskCheckbox('chk-txt-2')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-xs text-alphagen-nearBlack">2. Display "Level: 1" on the top-left in gray (size 15)</h3>
+                    </div>
+
+                    <div class="checkbox-card py-2.5" id="chk-txt-3" onclick="toggleTaskCheckbox('chk-txt-3')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-xs text-alphagen-nearBlack">3. Display "High Score: 0" in the top-middle and "Score: 0" on the top-right (size 15)</h3>
+                    </div>
+
+                    <div class="checkbox-card py-2.5" id="chk-txt-4" onclick="toggleTaskCheckbox('chk-txt-4')">
+                        <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="font-extrabold text-xs text-alphagen-nearBlack">4. Display the centered "DINO RUN" title in the middle (size 28)</h3>
+                    </div>
+                </div>
+            </div>
+
+          
+        </div>
+
+        <!-- ================= SLIDE 11: CODING CHALLENGE - UPGRADE WITH VARIABLES (NO SYNTAX SHOWN, NO BEFORE PART) ================= -->
+        <div id="slide-11" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Coding Lab 3</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Coding Challenge: Upgrade Your Code with Variables</h2>
+                
+            </div>
+
+            <div class="grid grid-cols-12 gap-5 my-auto items-stretch">
+                <!-- Left 5 cols: Pointers Only (No Syntax Given) -->
+                <div class="col-span-5 bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-3xl flex flex-col justify-between space-y-2.5">
+                    <div>
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-alphagen-purple bg-white px-3 py-1 rounded-lg border border-alphagen-purplePale">Your Task Pointers</span>
+                        <h3 class="text-base font-extrabold text-alphagen-nearBlack mt-2">Replace Hardcoded Numbers</h3>
+                    </div>
+
+                    <div class="space-y-2.5 my-auto">
+                        <div class="checkbox-card py-2.5" id="chk-var-1" onclick="toggleTaskCheckbox('chk-var-1')">
+                            <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                            <h4 class="font-extrabold text-xs text-alphagen-nearBlack">1. Create three variables: score (0), high score (0), and level (1)</h4>
+                        </div>
+
+                        <div class="checkbox-card py-2.5" id="chk-var-2" onclick="toggleTaskCheckbox('chk-var-2')">
+                            <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                            <h4 class="font-extrabold text-xs text-alphagen-nearBlack">2. Replace the static numbers in your Score, High Score, and Level text using those variables</h4>
+                        </div>
+
+                        <div class="checkbox-card py-2.5" id="chk-var-3" onclick="toggleTaskCheckbox('chk-var-3')">
+                            <div class="checkbox-box"><i class="fa-solid fa-check"></i></div>
+                            <h4 class="font-extrabold text-xs text-alphagen-nearBlack">3. Run your game and verify all three values display properly</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 7 cols: Student Answers Variable Questions -->
+                <div class="col-span-7 space-y-3.5 flex flex-col justify-between">
+                    <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl">
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mb-2">
+                            1. Why do we need a variable instead of plain text?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 's11-q1-fb', 'Not quite—Arcade can draw numbers, but variables let them update live!')" class="quiz-option text-xs w-full">
+                                <span>Because Arcade cannot display numbers without variables</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 's11-q1-fb', 'Spot on! Variables store values that can change and update dynamically during gameplay!')" class="quiz-option text-xs w-full">
+                                <span>So values can change and update live while playing the game</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                        <div id="s11-q1-fb" class="text-xs font-bold text-alphagen-purple mt-1.5 min-h-[18px]"></div>
+                    </div>
+
+                    <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-4 rounded-2xl">
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mb-2">
+                            2. Why do we need THREE separate variables for Score, High Score, and Level?
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="checkSingleQ(this, false, 's11-q2-fb', 'A single variable can only hold one number at a time—if score resets, high score would be lost!')" class="quiz-option text-xs w-full">
+                                <span>One single variable could hold all three numbers at the same time</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 's11-q2-fb', 'Correct! Each tracks a separate piece of data independently: current run score, best record, and difficulty level.')" class="quiz-option text-xs w-full">
+                                <span>Each tracks a separate game stat independently (current score, best record, and difficulty level)</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                        <div id="s11-q2-fb" class="text-xs font-bold text-alphagen-purple mt-1.5 min-h-[18px]"></div>
+                    </div>
+                </div>
+            </div>
+
+          
+        </div>
+
+        <!-- ================= SLIDE 12: KNOWLEDGE CHECK QUIZ (VARIED CORRECT OPTIONS) ================= -->
+        <div id="slide-12" class="slide-panel bg-white justify-between">
+            <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3.5 py-1 rounded-md border border-alphagen-purplePale">Concept Mastery</span>
+                <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-1.5">Python Arcade Knowledge Check</h2>
+              
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 my-auto">
+                <!-- KC 1: Library Import (Correct = B) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-3.5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Question 1</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-0.5 mb-2">
+                            Which library do we import at the top of our Python file?
+                        </h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="checkSingleQ(this, false, 'kc-1-fb', 'Not quite—today we switched to Python Arcade!')" class="quiz-option text-xs font-mono py-2">
+                                <span>import pgzrun</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'kc-1-fb', 'Correct! import arcade loads the Python Arcade library.')" class="quiz-option text-xs font-mono py-2">
+                                <span>import arcade</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="kc-1-fb" class="text-[11px] font-bold text-alphagen-purple mt-1.5 min-h-[16px]"></div>
+                </div>
+
+                <!-- KC 2: Background Color Syntax (Correct = A) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-3.5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Question 2</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-0.5 mb-2">
+                            What is the correct syntax to add a background color to our window?
+                        </h3>
+                        <div class="space-y-1.5">
+                            <button onclick="checkSingleQ(this, true, 'kc-2-fb', 'Spot on! We set the background_color property on our window object.')" class="quiz-option text-[11px] font-mono py-2 w-full">
+                                <span>window.background_color = (240, 240, 240)</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'kc-2-fb', 'That is Pygame Zero syntax—Arcade sets window.background_color!')" class="quiz-option text-[11px] font-mono py-2 w-full">
+                                <span>screen.fill("gray")</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="kc-2-fb" class="text-[11px] font-bold text-alphagen-purple mt-1.5 min-h-[16px]"></div>
+                </div>
+
+                <!-- KC 3: Draw Text Syntax (Correct = B) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-3.5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Question 3</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-0.5 mb-2">
+                            What is the correct syntax to draw text on the screen in Arcade?
+                        </h3>
+                        <div class="space-y-1.5">
+                            <button onclick="checkSingleQ(this, false, 'kc-3-fb', 'Check the function name—Arcade uses arcade.draw_text(...).')" class="quiz-option text-[11px] font-mono py-2 w-full">
+                                <span>screen.draw.text("DINO RUN", (350, 150))</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, true, 'kc-3-fb', 'Yes! arcade.draw_text(text, x, y, color, font_size) renders text on screen.')" class="quiz-option text-[11px] font-mono py-2 w-full">
+                                <span>arcade.draw_text("DINO RUN", 350, 150, arcade.color.GRAY, 28)</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="kc-3-fb" class="text-[11px] font-bold text-alphagen-purple mt-1.5 min-h-[16px]"></div>
+                </div>
+
+                <!-- KC 4: Function Name (Correct = A) -->
+                <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale p-3.5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-extrabold text-alphagen-purple uppercase">Question 4</span>
+                        <h3 class="font-extrabold text-sm text-alphagen-nearBlack mt-0.5 mb-2">
+                            Under which event function is <code class="font-mono text-alphagen-purple">arcade.draw_text()</code> placed?
+                        </h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="checkSingleQ(this, true, 'kc-4-fb', 'Correct! @window.event followed by def on_draw(): draws everything!')" class="quiz-option text-xs font-mono py-2">
+                                <span>def on_draw():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                            <button onclick="checkSingleQ(this, false, 'kc-4-fb', 'In Arcade, the event handler is named def on_draw(): (not def draw():).')" class="quiz-option text-xs font-mono py-2">
+                                <span>def draw():</span>
+                                <i class="fa-regular fa-circle text-alphagen-purple"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="kc-4-fb" class="text-[11px] font-bold text-alphagen-purple mt-1.5 min-h-[16px]"></div>
+                </div>
+            </div>
+
+          
+        </div>
+
+        <!-- ================= SLIDE 13: COMPLETE REFERENCE CODE & SUMMARY ================= -->
+        
+       
+
+    </div>
+
+    <!-- Bottom Fixed Navigation Control Bar -->
+    <div class="nav-bar">
+        <button id="prev-btn" class="nav-btn btn-interactive" onclick="prevSlide()" disabled>
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Previous</span>
+        </button>
+
+        <span class="text-sm font-semibold text-white">
+            Use Arrow Keys (&larr; / &rarr;) to navigate slides
+        </span>
+
+        <button id="next-btn" class="nav-btn btn-interactive" onclick="nextSlide()">
+            <span>Next</span>
+            <i class="fa-solid fa-arrow-right"></i>
+        </button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 13;
+        let soundEnabled = true;
+
+        /* Web Audio Synthesizer */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('audio-btn');
+            btn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'pop') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(360, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(720, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(110, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+                }
+            } catch (e) {}
+        }
+
+        function initHeaderDots() {
+            const container = document.getElementById('header-dots-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = `dot-indicator ${i === 1 ? 'active' : ''}`;
+                dot.onclick = () => goToSlide(i);
+                container.appendChild(dot);
+            }
+        }
+
+        function updateSlideDisplay() {
+            document.querySelectorAll('.slide-panel').forEach((panel, idx) => {
+                panel.classList.remove('active');
+                if (idx + 1 === currentSlide) {
+                    panel.classList.add('active');
+                }
+            });
+
+            const dots = document.querySelectorAll('.dot-indicator');
+            dots.forEach((dot, idx) => {
+                if (idx + 1 === currentSlide) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+
+            document.getElementById('slide-counter-pill').innerText = `Slide ${currentSlide} / ${totalSlides}`;
+            document.getElementById('slide-dropdown').value = currentSlide;
+
+            document.getElementById('prev-btn').disabled = currentSlide === 1;
+            document.getElementById('next-btn').disabled = currentSlide === totalSlides;
+
+            if (currentSlide === totalSlides && typeof confetti === 'function') {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            }
+        }
+
+        function goToSlide(slideNum) {
+            if (slideNum >= 1 && slideNum <= totalSlides) {
+                currentSlide = slideNum;
+                playSound('pop');
+                updateSlideDisplay();
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) goToSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) goToSlide(currentSlide - 1);
+        }
+
+        /* Slide 2 Save Reflection */
+        function saveCapstoneReflection() {
+            const val = document.getElementById('capstone-reflection-input').value.trim();
+            const msg = document.getElementById('reflection-saved-msg');
+            if (val) {
+                playSound('correct');
+                msg.innerText = "✓ Capstone project reflection saved! Click Next to continue.";
+                msg.className = "text-xs font-bold text-emerald-600";
+            } else {
+                playSound('wrong');
+                msg.innerText = "Please write a quick description of your capstone project first!";
+                msg.className = "text-xs font-bold text-alphagen-coral";
+            }
+        }
+
+        /* Generic Single-Choice Quiz Handler */
+        function checkSingleQ(btn, isCorrect, feedbackId, message) {
+            const container = btn.parentElement;
+            container.querySelectorAll('.quiz-option').forEach(b => {
+                b.classList.remove('selected-correct', 'selected-wrong');
+            });
+
+            const fb = document.getElementById(feedbackId);
+            if (isCorrect) {
+                playSound('correct');
+                btn.classList.add('selected-correct');
+                if (fb) {
+                    fb.innerText = "✓ " + message;
+                    fb.className = fb.className.replace(/text-alphagen-purple|text-alphagen-coral/g, '') + " text-emerald-600";
+                }
+            } else {
+                playSound('wrong');
+                btn.classList.add('selected-wrong');
+                if (fb) {
+                    fb.innerText = "✕ " + message;
+                    fb.className = fb.className.replace(/text-alphagen-purple|text-emerald-600/g, '') + " text-alphagen-coral";
+                }
+            }
+        }
+
+        /* Slide 3 Tabs Switcher */
+        function switchWorkTab(tab) {
+            playSound('pop');
+            const btnPygame = document.getElementById('tab-btn-pygame');
+            const btnPgzero = document.getElementById('tab-btn-pgzero');
+            const panelPygame = document.getElementById('tab-panel-pygame');
+            const panelPgzero = document.getElementById('tab-panel-pgzero');
+
+            if (tab === 'pygame') {
+                btnPygame.classList.add('active');
+                btnPgzero.classList.remove('active');
+                panelPygame.classList.remove('hidden');
+                panelPygame.classList.add('grid');
+                panelPgzero.classList.add('hidden');
+                panelPgzero.classList.remove('grid');
+            } else {
+                btnPgzero.classList.add('active');
+                btnPygame.classList.remove('active');
+                panelPgzero.classList.remove('hidden');
+                panelPgzero.classList.add('grid');
+                panelPygame.classList.add('hidden');
+                panelPygame.classList.remove('grid');
+            }
+        }
+
+        /* Slide 5 Copy Command */
+        function copyCmd(text, btn) {
+            navigator.clipboard.writeText(text);
+            playSound('correct');
+            const orig = btn.innerText;
+            btn.innerText = 'Copied!';
+            setTimeout(() => btn.innerText = orig, 1500);
+        }
+
+        /* Slide 7 Clickable Code Parts Explainer & Window Resizer */
+        const windowCodeExplanations = {
+            import: {
+                title: "import arcade",
+                desc: "Loads the Python Arcade library into your program so you can create windows, draw graphics/text, and build your game."
+            },
+            dimensions: {
+                title: "WIDTH & HEIGHT Variables",
+                desc: "Sets the horizontal width (in pixels) and vertical height (in pixels) of your game screen."
+            },
+            window: {
+                title: 'window = arcade.Window(WIDTH, HEIGHT, "Dino Run")',
+                desc: 'Creates a new game Window object with your chosen width, height, and title bar text ("Dino Run").'
+            },
+            bg: {
+                title: "window.background_color = ...",
+                desc: "Sets the background fill color of your game window using an RGB color tuple like (240, 240, 240) or a built-in arcade.color constant."
+            },
+            run: {
+                title: "arcade.run()",
+                desc: "Starts Arcade's main event and rendering loop so your window stays open and listens for events!"
+            }
+        };
+
+        function explainWindowCodePart(partKey, el) {
+            playSound('pop');
+            document.querySelectorAll('#slide-7 .code-line-btn').forEach(btn => btn.classList.remove('active-code-part'));
+            if (el) el.classList.add('active-code-part');
+            const info = windowCodeExplanations[partKey];
+            if (info) {
+                document.getElementById('win-explain-title').innerText = info.title;
+                document.getElementById('win-explain-desc').innerText = info.desc;
+            }
+        }
+
+        const bgColorMap = {
+            "(240, 240, 240)": "rgb(240, 240, 240)",
+            "arcade.color.SKY_BLUE": "#87CEEB",
+            "arcade.color.WHITE": "#FFFFFF",
+            "(255, 243, 204)": "rgb(255, 243, 204)"
+        };
+
+        function applyWindowDimensions(w, h) {
+            w = Math.max(300, Math.min(750, Math.round(w)));
+            h = Math.max(150, Math.min(340, Math.round(h)));
+
+            document.getElementById('win-w-slider').value = w;
+            document.getElementById('win-h-slider').value = h;
+            document.getElementById('win-w-label').innerText = w;
+            document.getElementById('win-h-label').innerText = h;
+            document.getElementById('win-code-w').innerText = w;
+            document.getElementById('win-code-h').innerText = h;
+            document.getElementById('win-dim-pill').innerText = `${w} × ${h} px`;
+            document.getElementById('win-inner-label').innerText = `WIDTH = ${w}, HEIGHT = ${h}`;
+
+            const bgVal = document.getElementById('win-bg-select').value;
+            document.getElementById('win-code-bg').innerText = bgVal;
+
+            const winBox = document.getElementById('draggable-arcade-win');
+            winBox.style.width = `${Math.round(w * 0.72)}px`;
+            winBox.style.height = `${Math.round(h * 0.72)}px`;
+            winBox.style.backgroundColor = bgColorMap[bgVal] || "rgb(240, 240, 240)";
+        }
+
+        function syncWindowFromSliders() {
+            const w = parseInt(document.getElementById('win-w-slider').value);
+            const h = parseInt(document.getElementById('win-h-slider').value);
+            applyWindowDimensions(w, h);
+        }
+
+        function setDinoPresetWindow() {
+            playSound('correct');
+            document.getElementById('win-bg-select').value = "(240, 240, 240)";
+            applyWindowDimensions(700, 250);
+        }
+
+        function initWindowDragResize() {
+            const handle = document.getElementById('win-resize-handle');
+            const winBox = document.getElementById('draggable-arcade-win');
+            if (!handle || !winBox) return;
+
+            let isDragging = false;
+            let startX = 0, startY = 0, startW = 0, startH = 0;
+
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startW = parseInt(document.getElementById('win-w-slider').value);
+                startH = parseInt(document.getElementById('win-h-slider').value);
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = (e.clientX - startX) * 1.5;
+                const dy = (e.clientY - startY) * 1.5;
+                applyWindowDimensions(startW + dx, startH + dy);
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    playSound('pop');
+                }
+            });
+        }
+
+        /* Slide 9 Interactive Text Lab with Token & Control Sync */
+        const textParamExplanations = {
+            event: {
+                title: "@window.event & def on_draw():",
+                desc: "A decorator that tells Arcade to automatically run on_draw() whenever the window needs to redraw graphics on the screen."
+            },
+            text: {
+                title: "Parameter 1: text",
+                desc: "The exact string message displayed on the screen (e.g., \"DINO RUN\"). Changing this changes the words drawn."
+            },
+            x: {
+                title: "Parameter 2: start_x (Horizontal Position)",
+                desc: "Horizontal distance in pixels from the left edge (x = 0 is left, x = 700 is right). Watch the red dot move left/right!"
+            },
+            y: {
+                title: "Parameter 3: start_y (Vertical Position)",
+                desc: "Vertical distance in pixels from the BOTTOM edge (y = 0 is bottom, y = 250 is top). Watch the red dot move up/down!"
+            },
+            color: {
+                title: "Parameter 4: color",
+                desc: "Sets the text color using Arcade's built-in color palette (like arcade.color.GRAY) or an RGB tuple."
+            },
+            size: {
+                title: "Parameter 5: font_size",
+                desc: "Controls how large or small the letters appear on screen in points (e.g., 15 for HUD labels, 28 for the title)."
+            },
+            anchor: {
+                title: 'Parameter 6: anchor_x ("left", "center", "right")',
+                desc: 'Controls how the text aligns relative to the red (x, y) dot: "left" starts at x, "center" centers on x, and "right" ends at x!'
+            }
+        };
+
+        function highlightTextParam(paramKey) {
+            // Clear token highlights
+            document.querySelectorAll('#slide-9 .syntax-token-btn').forEach(el => el.classList.remove('active-token'));
+            // Clear control row highlights
+            ['text', 'x', 'y', 'color', 'size', 'anchor'].forEach(k => {
+                const row = document.getElementById(`param-row-${k}`);
+                if (row) row.classList.remove('param-row-highlight');
+            });
+
+            const tok = document.getElementById(`tok-${paramKey}`);
+            if (tok) tok.classList.add('active-token');
+
+            const row = document.getElementById(`param-row-${paramKey}`);
+            if (row) row.classList.add('param-row-highlight');
+
+            const info = textParamExplanations[paramKey];
+            if (info) {
+                document.getElementById('txt-param-title').innerText = info.title;
+                document.getElementById('txt-param-desc').innerText = info.desc;
+            }
+        }
+
+        function updateTextLab() {
+            const txt = document.getElementById('txt-val-input').value || " ";
+            const x = parseInt(document.getElementById('txt-x-slider').value);
+            const y = parseInt(document.getElementById('txt-y-slider').value);
+            const colRaw = document.getElementById('txt-color-select').value.split('|');
+            const colCode = colRaw[0];
+            const colHex = colRaw[1];
+            const size = parseInt(document.getElementById('txt-size-slider').value);
+            const anchor = document.getElementById('txt-anchor-select').value;
+
+            document.getElementById('txt-x-num').innerText = x;
+            document.getElementById('txt-y-num').innerText = y;
+            document.getElementById('txt-size-num').innerText = size;
+
+            document.getElementById('code-txt-val').innerText = txt;
+            document.getElementById('code-txt-x').innerText = x;
+            document.getElementById('code-txt-y').innerText = y;
+            document.getElementById('code-txt-col').innerText = colCode;
+            document.getElementById('code-txt-size').innerText = size;
+            document.getElementById('code-txt-anchor').innerText = anchor;
+
+            // Stage is 630x155 (x scale 0.9 of 700, y scale 0.62 of 250)
+            const scaledX = Math.round(x * 0.9);
+            const scaledY = Math.round(y * 0.62);
+
+            const dot = document.getElementById('txt-anchor-dot');
+            dot.style.left = `${scaledX}px`;
+            dot.style.bottom = `${scaledY}px`;
+
+            const preview = document.getElementById('txt-lab-preview');
+            preview.innerText = txt;
+            preview.style.left = `${scaledX}px`;
+            preview.style.bottom = `${scaledY}px`;
+            preview.style.color = colHex;
+            preview.style.fontSize = `${Math.round(size * 0.85)}px`;
+
+            if (anchor === 'center') {
+                preview.style.transform = 'translate(-50%, 35%)';
+            } else if (anchor === 'left') {
+                preview.style.transform = 'translate(0%, 35%)';
+            } else {
+                preview.style.transform = 'translate(-100%, 35%)';
+            }
+        }
+
+        /* Task Checkbox Toggle */
+        function toggleTaskCheckbox(id) {
+            playSound('pop');
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('checked');
+        }
+
+        /* Slide 13 Copy Full Reference Code */
+        function copyFullReferenceCode(btn) {
+            const rawCode = `import arcade
+
+WIDTH = 700
+HEIGHT = 250
+
+window = arcade.Window(WIDTH, HEIGHT, "Dino Run")
+window.background_color = (240, 240, 240)
+
+score = 0
+high_score = 0
+level = 1
+
+
+@window.event
+def on_draw():
+    window.clear()
+    arcade.draw_text(f"Score: {int(score)}", 550, 215, arcade.color.GRAY, 15)
+    arcade.draw_text(f"High Score: {int(high_score)}", 350, 215, arcade.color.GRAY, 15)
+    arcade.draw_text(f"Level: {level}", 20, 215, arcade.color.GRAY, 15)
+    arcade.draw_text("DINO RUN", 350, 150, arcade.color.GRAY, 28, anchor_x="center")
+
+
+arcade.run()`;
+            navigator.clipboard.writeText(rawCode);
+            playSound('correct');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Copied!';
+            setTimeout(() => btn.innerHTML = orig, 1800);
+        }
+
+        /* Keyboard Listener */
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initHeaderDots();
+            updateSlideDisplay();
+            syncWindowFromSliders();
+            initWindowDragResize();
+            updateTextLab();
+            highlightTextParam('text');
+        });
+    </script>
+</body>
+</html>
